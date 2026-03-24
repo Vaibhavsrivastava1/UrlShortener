@@ -34,6 +34,10 @@ public class Url {
     private String shortUrl;
     @Column(name = "created_at")
     private LocalDateTime createdAt ;
+    @Column(name = "click_count")
+    private Long clicks = 0l ;
+    @Column(name = "expiration_Time")
+    private LocalDateTime expiryTime ;
 
 
 }
