@@ -1,10 +1,15 @@
 package com.urlshorterner.urlshorterner.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Random;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.urlshorterner.urlshorterner.DT0.UrlAnalyticResponse;
+import com.urlshorterner.urlshorterner.DT0.UrlRequest;
 import com.urlshorterner.urlshorterner.Entity.Url;
 import com.urlshorterner.urlshorterner.Repository.urlRepository;
 
@@ -31,24 +36,37 @@ public class UrlService {
         return code.toString() ;
     }
 
-    public String shortenUrl( String OriginalUrl){
-        OriginalUrl = OriginalUrl.trim();
-       
-
-
-        String shortUrl = Generatecode();
-
-        while(urlRepository.findByShortUrl(shortUrl).isPresent()){
+    public String shortenUrl( UrlRequest url){
+        String OriginalUrl = url.getUrl().trim();
+        String shortUrl ;
+        if(url.getCustomcode() != null  &&  !url.getCustomcode().isEmpty()){
+            if (urlRepository.findByShortUrl(url.getCustomcode()).isPresent()) {
+                throw new RuntimeException("Custom code alredy exists");
+                
+            }
+            shortUrl = url.getCustomcode();
+            
+        }
+        else
+        {
             shortUrl = Generatecode();
+            while(urlRepository.findByShortUrl(shortUrl).isPresent()){
+                shortUrl = Generatecode();
+            }
+
         }
 
-        Url url = Url.builder()
+
+      
+        Url urlentity = Url.builder()
                      .originalUrl(OriginalUrl)
                      .shortUrl(shortUrl)
                      .createdAt(LocalDateTime.now())
+                     .clicks(0l)
+                     .expiryTime(LocalDateTime.now().plusDays(7))
                      .build();
 
-          urlRepository.save(url);
+          urlRepository.save(urlentity);
           
           return  "http://localhost:8080/" + shortUrl;
 
@@ -58,8 +76,30 @@ public class UrlService {
         Url url  = urlRepository.findByShortUrl(shortUrl)
                    .orElseThrow(() ->  new RuntimeException("Url does not exist"));
 
+        if(url.getExpiryTime()!=null &&  url.getExpiryTime().isBefore(LocalDateTime.now())){
+            throw new RuntimeException("URL is expired ");
+        }
+
+          
+        url.setClicks(url.getClicks()     +1   );
+        urlRepository.save(url);   
+
                    
            return url;        
+    }
+
+
+    public List<UrlAnalyticResponse> findTopUrl(int limit ){
+        Pageable pageable = PageRequest.of(0, limit);
+        List<Url> list = urlRepository.findTopUrls(pageable);
+
+        return list.stream().map( item ->
+            UrlAnalyticResponse.builder()
+                                .shortcode(item.getShortUrl())
+                                .originalUrl(item.getOriginalUrl())
+                                .clicks(item.getClicks())
+                                .build()).toList();
+
     }
 
 }
