@@ -2,7 +2,7 @@ package com.urlshorterner.urlshorterner.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Random;
+
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +12,7 @@ import com.urlshorterner.urlshorterner.DT0.UrlAnalyticResponse;
 import com.urlshorterner.urlshorterner.DT0.UrlRequest;
 import com.urlshorterner.urlshorterner.Entity.Url;
 import com.urlshorterner.urlshorterner.Repository.urlRepository;
+import com.urlshorterner.urlshorterner.Util.Base62Encoder;
 
 import lombok.AllArgsConstructor;
 
@@ -21,20 +22,14 @@ public class UrlService {
 
 
     private urlRepository urlRepository ;
+    private Base62Encoder base62Encoder;
 
-     private static final String CHAR_SET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    private static final int CODE_LENGTH = 6;
-    private final Random random = new Random();;
+    private final String BASE_URL = "http://localhost:8080/";
+
+    
 
 
-    private String Generatecode(){
-        StringBuilder code = new StringBuilder();
-        int l = CHAR_SET.length();
-        for( int i = 0 ; i<CODE_LENGTH; i++){
-            code.append(CHAR_SET.charAt(random.nextInt(l)));
-        }
-        return code.toString() ;
-    }
+  
 
     public String shortenUrl( UrlRequest url){
         String OriginalUrl = url.getUrl().trim();
@@ -49,26 +44,36 @@ public class UrlService {
         }
         else
         {
-            shortUrl = Generatecode();
-            while(urlRepository.findByShortUrl(shortUrl).isPresent()){
-                shortUrl = Generatecode();
-            }
+           Url temp = Url.builder()
+                         .originalUrl(OriginalUrl)
+                         .clicks(0L)
+                         .createdAt(LocalDateTime.now())
+                         .expiryTime(LocalDateTime.now().plusDays(7))
+                         .build();
 
+             temp =  urlRepository.save(temp);
+             shortUrl = base62Encoder.encode(temp.getId());
+             
+             temp.setShortUrl(shortUrl);
+             urlRepository.save(temp);
+
+        }
+        if(url.getCustomcode() != null  &&  !url.getCustomcode().isEmpty()){
+
+            Url urlEntity = Url.builder()
+                         .originalUrl(OriginalUrl)
+                         .shortUrl(url.getCustomcode())
+                         .clicks(0l)
+                         .createdAt(LocalDateTime.now())
+                         .expiryTime(LocalDateTime.now().plusDays(7))
+                         .build();
+            urlRepository.save(urlEntity);             
         }
 
 
       
-        Url urlentity = Url.builder()
-                     .originalUrl(OriginalUrl)
-                     .shortUrl(shortUrl)
-                     .createdAt(LocalDateTime.now())
-                     .clicks(0l)
-                     .expiryTime(LocalDateTime.now().plusDays(7))
-                     .build();
-
-          urlRepository.save(urlentity);
-          
-          return  "http://localhost:8080/" + shortUrl;
+       
+          return  BASE_URL + shortUrl;
 
     }
 
