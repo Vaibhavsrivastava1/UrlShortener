@@ -31,6 +31,12 @@ public class UrlController {
 
     private UrlService urlService ;
 
+    @GetMapping("/")
+    public String getMethodName() {
+        return new String("Hello");
+    }
+    
+
     @PostMapping("/shorten")
     public ResponseEntity<APIResponse<String>> shortenUrl( @Valid @RequestBody UrlRequest url) {
 
