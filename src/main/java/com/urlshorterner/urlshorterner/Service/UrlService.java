@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import com.urlshorterner.urlshorterner.DT0.UrlAnalyticResponse;
 import com.urlshorterner.urlshorterner.DT0.UrlRequest;
 import com.urlshorterner.urlshorterner.Entity.Url;
+import com.urlshorterner.urlshorterner.Entity.User;
+import com.urlshorterner.urlshorterner.Repository.UserRepository;
 import com.urlshorterner.urlshorterner.Repository.urlRepository;
 import com.urlshorterner.urlshorterner.Util.Base62Encoder;
 
@@ -21,6 +23,7 @@ import lombok.AllArgsConstructor;
 public class UrlService {
 
 
+    private UserRepository userRepository;
     private urlRepository urlRepository ;
     private Base62Encoder base62Encoder;
 
@@ -31,7 +34,10 @@ public class UrlService {
 
   
 
-    public String shortenUrl( UrlRequest url){
+    public String shortenUrl( UrlRequest url , String email){
+
+        User user = userRepository.findByEmail(email)
+                    .orElseThrow(()->  new RuntimeException("User not found"));
         String OriginalUrl = url.getUrl().trim();
         String shortUrl ;
         if(url.getCustomcode() != null  &&  !url.getCustomcode().isEmpty()){
@@ -49,6 +55,7 @@ public class UrlService {
                          .clicks(0L)
                          .createdAt(LocalDateTime.now())
                          .expiryTime(LocalDateTime.now().plusDays(7))
+                         .user(user)
                          .build();
 
              temp =  urlRepository.save(temp);
