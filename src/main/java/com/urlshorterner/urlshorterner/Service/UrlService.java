@@ -14,6 +14,7 @@ import com.urlshorterner.urlshorterner.Entity.Url;
 import com.urlshorterner.urlshorterner.Entity.User;
 import com.urlshorterner.urlshorterner.Repository.UserRepository;
 import com.urlshorterner.urlshorterner.Repository.urlRepository;
+import com.urlshorterner.urlshorterner.Util.AuthUtil;
 import com.urlshorterner.urlshorterner.Util.Base62Encoder;
 
 import lombok.AllArgsConstructor;
@@ -26,6 +27,7 @@ public class UrlService {
     private UserRepository userRepository;
     private urlRepository urlRepository ;
     private Base62Encoder base62Encoder;
+    private AuthUtil authUtil;
 
     private final String BASE_URL = "http://localhost:8080/";
 
@@ -34,7 +36,10 @@ public class UrlService {
 
   
 
-    public String shortenUrl( UrlRequest url , String email){
+    public String shortenUrl( UrlRequest url ){
+
+        String email = authUtil.getCurrentUserEmail();
+
 
         User user = userRepository.findByEmail(email)
                     .orElseThrow(()->  new RuntimeException("User not found"));
@@ -112,6 +117,23 @@ public class UrlService {
                                 .clicks(item.getClicks())
                                 .build()).toList();
 
+    }
+
+    public List<UrlAnalyticResponse> getMyUrl(PageRequest page) {
+
+        String email = authUtil.getCurrentUserEmail();
+
+        User user =  userRepository.findByEmail(email)
+                     .orElseThrow(() -> new RuntimeException("User not found"));
+
+          return urlRepository.findByUser(user, page).stream()
+                               .map( r-> UrlAnalyticResponse.builder()
+                                        .originalUrl(r.getOriginalUrl())
+                                         .shortcode(r.getShortUrl())
+                                          .clicks(r.getClicks())
+                                          .build() ).toList();
+                                                   
+                                             
     }
 
 }
